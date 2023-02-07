@@ -436,7 +436,7 @@ contains
 
       !-- Local variables
       integer :: n_o, n_r, start_lm, stop_lm
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       integer :: nr_start, nr_stop
       integer :: nold, nexp, nimp
       real(cp), pointer :: wimp_ptr(:), wexp_ptr(:), wimp_lin_ptr(:)
@@ -456,7 +456,7 @@ contains
       nold = this%nold; nexp = this%nexp; nimp = this%nimp
 #endif
 
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       !$omp target data map(to: wimp_ptr, wexp_ptr, wimp_lin_ptr)
       !$omp target teams
       !$omp distribute parallel do collapse(2)
@@ -549,7 +549,7 @@ contains
 
       !-- Local variables
       integer :: n_o, n_r
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       integer :: nr_start, nr_stop
       integer :: nold, nexp, nimp
       real(cp), pointer :: wimp_ptr(:), wexp_ptr(:), wimp_lin_ptr(:)
@@ -568,7 +568,7 @@ contains
       nold = this%nold; nexp = this%nexp; nimp = this%nimp
 #endif
 
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       !$omp target data map(to: wimp_ptr, wexp_ptr, wimp_lin_ptr)
       !$omp target teams
       !$omp distribute parallel do collapse(2)
@@ -685,7 +685,7 @@ contains
 
       !-- Local variables:
       integer :: n_o, n_r, lm_start, lm_stop
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       integer :: nr_start, nr_stop
       integer :: nold, nexp, nimp
       integer :: lm
@@ -701,7 +701,7 @@ contains
       nold = this%nold; nexp = this%nexp; nimp = this%nimp
 #endif
 
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       !$omp target teams
       do n_o=nexp,2,-1
          !$omp distribute parallel do collapse(2)

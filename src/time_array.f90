@@ -6,7 +6,11 @@ module time_array
 
    use precision_mod
    use constants, only: zero
+#ifdef WITH_OMP_GPU_NOK
+   use mem_alloc, only: bytes_allocated, gpu_bytes_allocated
+#else
    use mem_alloc, only: bytes_allocated
+#endif
 
    implicit none
 
@@ -75,6 +79,10 @@ contains
 
       bytes_allocated = bytes_allocated + (ulm-llm+1)*(nRstop-nRstart+1)*(&
       &                 nold+nimp)*SIZEOF_DEF_COMPLEX
+#ifdef WITH_OMP_GPU_NOK
+      gpu_bytes_allocated = gpu_bytes_allocated + (ulm-llm+1)*(nRstop-nRstart+1)*(&
+      &                     nold+nimp)*SIZEOF_DEF_COMPLEX
+#endif
 
       this%old(:,:,:) =zero
       this%impl(:,:,:)=zero
@@ -83,6 +91,10 @@ contains
          allocate( this%expl(llm:ulm,nRstart:nRstop,nexp) )
          bytes_allocated = bytes_allocated + (ulm-llm+1)*(nRstop-nRstart+1)*nexp* &
          &                 SIZEOF_DEF_COMPLEX
+#ifdef WITH_OMP_GPU_NOK
+         gpu_bytes_allocated = gpu_bytes_allocated + (ulm-llm+1)*(nRstop-nRstart+1)*nexp* &
+         &                     SIZEOF_DEF_COMPLEX
+#endif
          this%expl(:,:,:)=zero
       end if
 
@@ -114,6 +126,9 @@ contains
 
       allocate( this%expl(nexp), this%old(nold), this%impl(nimp) )
       bytes_allocated = bytes_allocated + (nexp+nold+nimp)*SIZEOF_DEF_REAL
+#ifdef WITH_OMP_GPU_NOK
+      gpu_bytes_allocated = gpu_bytes_allocated + (nexp+nold+nimp)*SIZEOF_DEF_REAL
+#endif
 
       this%expl(:)=0.0_cp
       this%old(:) =0.0_cp

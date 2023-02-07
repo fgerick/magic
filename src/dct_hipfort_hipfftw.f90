@@ -4,7 +4,7 @@ module cosine_transform_gpu
    ! (DCT-I).
    !
 
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
 
    use iso_c_binding
    use precision_mod

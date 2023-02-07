@@ -8,7 +8,7 @@ module updateWPS_mod
 
    use omp_lib
    use precision_mod
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
    use mem_alloc, only: bytes_allocated, gpu_bytes_allocated
 #else
    use mem_alloc, only: bytes_allocated
@@ -29,7 +29,7 @@ module updateWPS_mod
    use logic, only: l_update_v, l_temperature_diff, l_RMS, l_full_sphere
    use RMS, only: DifPol2hInt, DifPolLMr
    use algebra, only: prepare_mat, solve_mat
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
    use algebra_hipfort, only: gpu_prepare_mat, gpu_solve_mat
 #endif
    use communications, only: get_global_sum
@@ -40,7 +40,7 @@ module updateWPS_mod
    use useful, only: abortRun, cc2real
    use time_schemes, only: type_tscheme
    use time_array, only: type_tarray
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
    use iso_c_binding
    use hipfort_check
    use hipfort_hipblas
@@ -52,12 +52,12 @@ module updateWPS_mod
 
    !-- Input of recycled work arrays:
    complex(cp), allocatable :: workB(:,:), workC(:,:)
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
    real(cp), allocatable, target :: rhs1(:,:,:), rhs(:)
 #else
    real(cp), allocatable :: rhs1(:,:,:), rhs(:)
 #endif
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
    real(cp), allocatable, target :: ps0Mat(:,:), ps0Mat_fac(:,:)
    integer, allocatable, target :: ps0Pivot(:)
    real(cp), allocatable, target :: wpsMat(:,:,:)
@@ -74,7 +74,7 @@ module updateWPS_mod
 
    integer :: maxThreads
 
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
    type(c_ptr) :: handle = c_null_ptr
    integer, allocatable, target :: devInfo(:)
 #endif
@@ -103,7 +103,7 @@ contains
       bytes_allocated = bytes_allocated+(9*n_r_max*nLMBs2(1+rank)+6*n_r_max* &
       &                 nLMBs2(1+rank))*SIZEOF_DEF_REAL+3*n_r_max*           &
       &                 nLMBs2(1+rank)*SIZEOF_INTEGER
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       !$omp target enter data map(alloc: ps0Mat, ps0Mat_fac, ps0Pivot, wpsMat, wpsMat_fac, wpsPivot)
       !$omp target update to(ps0Mat, ps0Mat_fac, ps0Pivot, wpsMat, wpsMat_fac, wpsPivot) nowait
       gpu_bytes_allocated = gpu_bytes_allocated+(4*n_r_max+2)*n_r_max*SIZEOF_DEF_REAL &
@@ -119,7 +119,7 @@ contains
       allocate( workC(llm:ulm,n_r_max) )
       bytes_allocated = bytes_allocated+2*(ulm-llm+1)*n_r_max*SIZEOF_DEF_COMPLEX
       workB(:,:) = zero; workC(:,:) = zero
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       !$omp target enter data map(alloc: workB, workC)
       !$omp target update to(workB, workC) nowait
       gpu_bytes_allocated = gpu_bytes_allocated+2*(ulm-llm+1)*n_r_max*SIZEOF_DEF_COMPLEX
@@ -140,7 +140,7 @@ contains
       rhs(:) = 0.0_cp
       bytes_allocated=bytes_allocated+2*n_r_max*SIZEOF_DEF_REAL
 
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       !$omp target enter data map(alloc: rhs1, rhs)
       !$omp target update to(rhs1, rhs)
       gpu_bytes_allocated=gpu_bytes_allocated+2*n_r_max*maxThreads* &
@@ -150,7 +150,7 @@ contains
 
       Cor00_fac=four/sqrt(three)
 
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       call hipblasCheck(hipblasCreate(handle))
       allocate(devInfo(1))
       devInfo(1) = 0
@@ -162,18 +162,18 @@ contains
 !-----------------------------------------------------------------------------
    subroutine finalize_updateWPS
 
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       !$omp target exit data map(delete: ps0Mat, ps0Mat_fac, ps0Pivot, wpsMat, wpsMat_fac, wpsPivot)
 #endif
       deallocate( ps0Mat, ps0Mat_fac, ps0Pivot )
       deallocate( wpsMat, wpsMat_fac, wpsPivot, lWPSmat )
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       !$omp target exit data map(delete: rhs1, rhs)
       !$omp target exit data map(delete: workB, workC)
 #endif
       deallocate( workB, workC, rhs1, rhs)
 
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       call hipblasCheck(hipblasDestroy(handle))
       !$omp target exit data map(delete: devInfo)
       deallocate(devInfo)
@@ -257,41 +257,42 @@ contains
                lWPSmat(l1)=.true.
             end if
 
-            !$omp target teams distribute parallel do
+!             !$omp target teams distribute parallel do
             do nR=1,n_r_max
                rhs(nR)        =real(ds(lm1,nR))
                rhs(nR+n_r_max)=real(dwdt_ptr(lm1,nR))+&
                &               Cor00_fac*CorFac*or1(nR)*z10(nR)
             end do
-            !$omp end target teams distribute parallel do
-            !$omp target
+!             !$omp end target teams distribute parallel do
+!             !$omp target
             rhs(1)        =real(tops(0,0))
             rhs(n_r_max)  =real(bots(0,0))
             rhs(n_r_max+1)=0.0_cp
-            !$omp end target
+!             !$omp end target
 
-            !$omp target teams distribute parallel do
+!             !$omp target teams distribute parallel do
             do nR=1,2*n_r_max
                rhs(nR)=rhs(nR)*ps0Mat_fac(nR,1)
             end do
-            !$omp end target teams distribute parallel do
+!             !$omp end target teams distribute parallel do
 
-            call gpu_solve_mat(ps0Mat,2*n_r_max,2*n_r_max,ps0Pivot,rhs,handle,devInfo)
+!             call gpu_solve_mat(ps0Mat,2*n_r_max,2*n_r_max,ps0Pivot,rhs,handle,devInfo)
+            call solve_mat(ps0Mat,2*n_r_max,2*n_r_max,ps0Pivot,rhs)
 
             !-- Rescale solution
-            !$omp target teams distribute parallel do
+!             !$omp target teams distribute parallel do
             do nR=1,2*n_r_max
                rhs(nR)=rhs(nR)*ps0Mat_fac(nR,2)
             end do
-            !$omp end target teams distribute parallel do
+!             !$omp end target teams distribute parallel do
 
-            !$omp target teams distribute parallel do
+!             !$omp target teams distribute parallel do
             do n_r_out=1,rscheme_oc%n_max
                s(lm1,n_r_out)=rhs(n_r_out)
                p(lm1,n_r_out)=rhs(n_r_out+n_r_max)
                w(lm1,n_r_out)=zero
             end do
-            !$omp end target teams distribute parallel do
+!             !$omp end target teams distribute parallel do
 
          else ! l1 /= 0
 
@@ -303,7 +304,7 @@ contains
             end if
 
             !-- Assemble RHS
-            !$omp target teams distribute parallel do private(lm1, m1, nR)
+!             !$omp target teams distribute parallel do private(lm1, m1, nR)
             do lm=1,sizeLMB2(nLMB2,nLMB)
                lm1=lm22lm(lm,nLMB2,nLMB)
                m1=lm22m(lm,nLMB2,nLMB)
@@ -332,14 +333,16 @@ contains
                rhs1(:,2*lm-1,0)=rhs1(:,2*lm-1,0)*wpsMat_fac(:,1,nLMB2)
                rhs1(:,2*lm,0)  =rhs1(:,2*lm,0)*wpsMat_fac(:,1,nLMB2)
             end do
-            !$omp end target teams distribute parallel do
+!             !$omp end target teams distribute parallel do
 
             lm=sizeLMB2(nLMB2,nLMB)
-            call gpu_solve_mat(wpsMat(:,:,nLMB2),3*n_r_max,3*n_r_max, &
-                 &             wpsPivot(:,nLMB2),rhs1(:,:,0),2*lm,handle,devInfo)
+!             call gpu_solve_mat(wpsMat(:,:,nLMB2),3*n_r_max,3*n_r_max, &
+!                  &             wpsPivot(:,nLMB2),rhs1(:,:,0),2*lm,handle,devInfo)
+            call solve_mat(wpsMat(:,:,nLMB2),3*n_r_max,3*n_r_max, &
+                 &         wpsPivot(:,nLMB2),rhs1(:,:,0),2*lm)
 
             !-- Loop to reassemble fields
-            !$omp target teams distribute parallel do private(lm1, m1, n_r_out)
+!             !$omp target teams distribute parallel do private(lm1, m1, n_r_out)
             do lm=1,sizeLMB2(nLMB2,nLMB)
                lm1=lm22lm(lm,nLMB2,nLMB)
                m1=lm22m(lm,nLMB2,nLMB)
@@ -368,7 +371,7 @@ contains
                   end do
                end if
             end do
-            !$omp end target teams distribute parallel do
+!             !$omp end target teams distribute parallel do
          end if
       end do   ! end of loop over l1 subblocks
 
@@ -524,7 +527,7 @@ contains
 
       !-- set cheb modes > rscheme_oc%n_max to zero (dealiazing)
 #ifdef WITH_OMP_GPU
-      !$omp target
+!       !$omp target
 #else
       !$omp do private(n_r_out,lm1) collapse(2)
 #endif
@@ -536,7 +539,7 @@ contains
          end do
       end do
 #ifdef WITH_OMP_GPU
-      !$omp end target
+!       !$omp end target
 #else
       !$omp end do
       !$omp end parallel
@@ -562,7 +565,7 @@ contains
 !------------------------------------------------------------------------------
    subroutine finish_exp_smat(dVSrLM, ds_exp_last)
 
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       complex(cp), intent(inout) :: dVSrLM(:,:)
 
       !-- Output variables
@@ -579,8 +582,10 @@ contains
 #ifdef WITH_OMP_GPU
       start_lm=llm; stop_lm=ulm
       call get_dr( dVSrLM, work_LMloc, ulm-llm+1, start_lm-llm+1,  &
-           &       stop_lm-llm+1, n_r_max, rscheme_oc, .true., .true., .true. )
-      !$omp target teams distribute parallel do collapse(2)
+           &       stop_lm-llm+1, n_r_max, rscheme_oc, nocopy=.true. )
+!       call get_dr( dVSrLM, work_LMloc, ulm-llm+1, start_lm-llm+1,  &
+!            &       stop_lm-llm+1, n_r_max, rscheme_oc, .true., .true., .true. )
+!       !$omp target teams distribute parallel do collapse(2)
 #else
       !$omp parallel default(shared) private(start_lm, stop_lm)
       start_lm=llm; stop_lm=ulm
@@ -600,7 +605,7 @@ contains
          end do
       end do
 #ifdef WITH_OMP_GPU
-      !$omp end target teams distribute parallel do
+!       !$omp end target teams distribute parallel do
 #else
       !$omp end do
       !$omp end parallel
@@ -621,7 +626,7 @@ contains
 
       allocate(work_Rloc(lm_max,nRstart:nRstop))
       work_Rloc = zero
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       !$omp target enter data map(alloc: work_Rloc)
       !$omp target update to(work_Rloc)
 #endif
@@ -631,7 +636,7 @@ contains
 
 #ifdef WITH_OMP_GPU
       start_lm=1; stop_lm=lm_max
-      !$omp target teams distribute parallel do collapse(2)
+!       !$omp target teams distribute parallel do collapse(2)
 #else
       !$omp parallel default(shared) private(n_r, lm, start_lm, stop_lm, l)
       start_lm=1; stop_lm=lm_max
@@ -648,13 +653,13 @@ contains
          end do
       end do
 #ifdef WITH_OMP_GPU
-      !$omp end target teams distribute parallel do
+!       !$omp end target teams distribute parallel do
 #else
       !$omp end parallel
 #endif
 
 
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       !$omp target exit data map(delete: work_Rloc)
 #endif
       deallocate(work_Rloc)
@@ -715,7 +720,7 @@ contains
 
       !-- Now get the fields from the assembly
 #ifdef WITH_OMP_GPU
-      !$omp target teams distribute parallel do collapse(2)
+!       !$omp target teams distribute parallel do collapse(2)
 #else
       !$omp do private(n_r,lm,l1,m1,dL)
 #endif
@@ -740,8 +745,8 @@ contains
          end do
       end do
 #ifdef WITH_OMP_GPU
-      !$omp end target teams distribute parallel do
-      !$omp target update from(s, dw) !-- Need for robin_bc
+!       !$omp end target teams distribute parallel do
+!       !$omp target update from(s, dw) !-- Need for robin_bc
 #else
       !$omp end do
 #endif
@@ -896,7 +901,7 @@ contains
 #endif
 
 #ifdef WITH_OMP_GPU
-      !$omp target update to(s, dw) !-- Need after robin_bc
+!       !$omp target update to(s, dw) !-- Need after robin_bc
       call dct_counter%start_count()
       call get_ddr(s, ds, workB, ulm-llm+1, start_lm-llm+1, stop_lm-llm+1, &
            &       n_r_max, rscheme_oc)
@@ -918,7 +923,7 @@ contains
 #endif
 
 #ifdef WITH_OMP_GPU
-      !$omp target teams distribute parallel do collapse(2)
+!       !$omp target teams distribute parallel do collapse(2)
 #else
       !$omp do private(n_r,lm,l1,dL)
 #endif
@@ -932,7 +937,7 @@ contains
          end do
       end do
 #ifdef WITH_OMP_GPU
-      !$omp end target teams distribute parallel do
+!       !$omp end target teams distribute parallel do
 #else
       !$omp end do
 #endif
@@ -948,7 +953,7 @@ contains
          end if
 
 #ifdef WITH_OMP_GPU
-         !$omp target teams distribute parallel do private(l1,m1,Dif,Buo,dL)
+!          !$omp target teams distribute parallel do private(l1,m1,Dif,Buo,dL)
 #else
          !$omp do private(n_r,lm,l1,m1,Dif,Buo,dL)
 #endif
@@ -987,7 +992,7 @@ contains
             end do
          end do
 #ifdef WITH_OMP_GPU
-         !$omp end target teams distribute parallel do
+!          !$omp end target teams distribute parallel do
 #else
          !$omp end do
 #endif
@@ -1052,7 +1057,7 @@ contains
       !$omp end single
 #endif
 
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       call get_ddr( s, ds, workB, ulm-llm+1, start_lm-llm+1, stop_lm-llm+1, &
            &        n_r_max, rscheme_oc, l_dct_in=.not. l_in_cheb)
       if ( l_in_cheb ) call rscheme_oc%costf1(s,ulm-llm+1,start_lm-llm+1, &
@@ -1093,7 +1098,7 @@ contains
 
       if ( istage == 1 ) then
 #ifdef WITH_OMP_GPU
-         !$omp target teams distribute parallel do collapse(2)
+!          !$omp target teams distribute parallel do collapse(2)
 #else
          !$omp do private(n_r,lm,l1,dL)
 #endif
@@ -1107,7 +1112,7 @@ contains
             end do
          end do
 #ifdef WITH_OMP_GPU
-         !$omp end target teams distribute parallel do
+!          !$omp end target teams distribute parallel do
 #else
          !$omp end do
 #endif
@@ -1126,7 +1131,7 @@ contains
          !-- Calculate explicit time step part:
          if ( l_temperature_diff ) then
 #ifdef WITH_OMP_GPU
-            !$omp target teams distribute parallel do private(l1,m1,Dif,Pre,Buo,dL)
+!             !$omp target teams distribute parallel do private(l1,m1,Dif,Pre,Buo,dL)
 #else
             !$omp do private(n_r,lm,l1,m1,Dif,Pre,Buo,dL)
 #endif
@@ -1177,7 +1182,7 @@ contains
                end do
             end do
 #ifdef WITH_OMP_GPU
-            !$omp end target teams distribute parallel do
+!             !$omp end target teams distribute parallel do
 #else
             !$omp end do
 #endif
@@ -1185,7 +1190,7 @@ contains
          else ! entropy diffusion
 
 #ifdef WITH_OMP_GPU
-            !$omp target teams distribute parallel do private(l1,m1,Dif,Pre,Buo,dL)
+!             !$omp target teams distribute parallel do private(l1,m1,Dif,Pre,Buo,dL)
 #else
             !$omp do private(n_r,lm,l1,m1,Dif,Pre,Buo,dL)
 #endif
@@ -1226,7 +1231,7 @@ contains
                end do
             end do
 #ifdef WITH_OMP_GPU
-            !$omp end target teams distribute parallel do
+!             !$omp end target teams distribute parallel do
 #else
             !$omp end do
 #endif
@@ -1268,7 +1273,7 @@ contains
       !-- Now mode l>0
 
       !----- Boundary conditions, see above:
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       !$omp target teams distribute parallel do
 #endif
       do nR_out=1,rscheme_oc%n_max
@@ -1372,13 +1377,13 @@ contains
 
 
       end do   !  loop over nR_out
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       !$omp end target teams distribute parallel do
 #endif
 
       if ( rscheme_oc%n_max < n_r_max ) then ! fill with zeros !
-#ifdef WITH_OMP_GPU
-         !$omp target !teams distribute parallel do
+#ifdef WITH_OMP_GPU_NOK
+         !$omp target
 #endif
          do nR_out=rscheme_oc%n_max+1,n_r_max
             nR_out_p=nR_out+n_r_max
@@ -1402,14 +1407,14 @@ contains
             wpsMat(2*n_r_max+1,nR_out_s)=0.0_cp
             wpsMat(3*n_r_max,nR_out_s)  =0.0_cp
          end do
-#ifdef WITH_OMP_GPU
-         !$omp end target !teams distribute parallel do
+#ifdef WITH_OMP_GPU_NOK
+         !$omp end target
 #endif
       end if
 
       if ( l_temperature_diff ) then ! temperature diffusion
 
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
          !$omp target teams distribute parallel do
 #endif
          do nR_out=1,n_r_max
@@ -1485,13 +1490,13 @@ contains
 
             end do
          end do
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
          !$omp end target teams distribute parallel do
 #endif
 
       else ! entropy diffusion
 
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
          !$omp target teams distribute parallel do
 #endif
          do nR_out=1,n_r_max
@@ -1555,13 +1560,13 @@ contains
 
             end do
          end do
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
          !$omp end target teams distribute parallel do
 #endif
       end if
 
       !----- Factor for highest and lowest cheb:
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       !$omp target teams distribute parallel do
 #endif
       do nR=1,n_r_max
@@ -1586,54 +1591,54 @@ contains
          wpsMat(nR_s,2*n_r_max+1)=rscheme_oc%boundary_fac*wpsMat(nR_s,2*n_r_max+1)
          wpsMat(nR_s,3*n_r_max)  =rscheme_oc%boundary_fac*wpsMat(nR_s,3*n_r_max)
       end do
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       !$omp end target teams distribute parallel do
 #endif
 
       ! compute the linesum of each line
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       !$omp target teams distribute parallel do
 #endif
       do nR=1,3*n_r_max
          wpsMat_fac(nR,1)=one/maxval(abs(wpsMat(nR,:)))
       end do
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       !$omp end target teams distribute parallel do
 #endif
 
       ! now divide each line by the linesum to regularize the matrix
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       !$omp target teams distribute parallel do
 #endif
       do nr=1,3*n_r_max
          wpsMat(nR,:) = wpsMat(nR,:)*wpsMat_fac(nR,1)
       end do
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       !$omp end target teams distribute parallel do
 #endif
 
       ! also compute the rowsum of each column
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       !$omp target teams distribute parallel do
 #endif
       do nR=1,3*n_r_max
          wpsMat_fac(nR,2)=one/maxval(abs(wpsMat(:,nR)))
       end do
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       !$omp end target teams distribute parallel do
 #endif
       ! now divide each row by the rowsum
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       !$omp target teams distribute parallel do
 #endif
       do nR=1,3*n_r_max
          wpsMat(:,nR) = wpsMat(:,nR)*wpsMat_fac(nR,2)
       end do
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       !$omp end target teams distribute parallel do
 #endif
 
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       call gpu_prepare_mat(wpsMat,3*n_r_max,3*n_r_max,wpsPivot,info,handle,devInfo)
 #else
       call prepare_mat(wpsMat,3*n_r_max,3*n_r_max,wpsPivot,info)
@@ -1663,7 +1668,7 @@ contains
 
       if ( l_temperature_diff ) then ! temperature diffusion
 
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
          !$omp target teams distribute parallel do
 #endif
          do nR_out=1,n_r_max
@@ -1698,13 +1703,13 @@ contains
                &                     beta(nR)*rscheme_oc%rMat(nR,nR_out) )
             end do
          end do
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
          !$omp end target teams distribute parallel do
 #endif
 
       else ! entropy diffusion
 
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
          !$omp target teams distribute parallel do
 #endif
          do nR_out=1,n_r_max
@@ -1726,15 +1731,14 @@ contains
                &                               beta(nR)*rscheme_oc%rMat(nR,nR_out) )
             end do
          end do
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
          !$omp end target teams distribute parallel do
 #endif
 
       end if
 
-
       !----- Boundary condition:
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       !$omp target teams distribute parallel do
 #endif
       do nR_out=1,rscheme_oc%n_max
@@ -1797,7 +1801,7 @@ contains
          end if
 
       end do
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       !$omp end target teams distribute parallel do
 #endif
 
@@ -1819,7 +1823,7 @@ contains
 
          if ( rscheme_oc%version == 'cheb' ) then
 
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
             !$omp target teams distribute parallel do
 #endif
             do nCheb=1,rscheme_oc%n_max
@@ -1839,7 +1843,7 @@ contains
                   end if
                end do
             end do
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
             !$omp end target teams distribute parallel do
 #endif
 
@@ -1847,7 +1851,7 @@ contains
 
             !-- In the finite differences case, we restrict the integral boundary
             !-- condition to a trapezoidal rule of integration
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
             !$omp target teams distribute parallel do
 #endif
             do nR_out=2,rscheme_oc%n_max-1
@@ -1855,7 +1859,7 @@ contains
                psMat(n_r_max+1,nR_out)  =half*work2(nR_out)*( r(nR_out+1)-r(nR_out-1) )
                psMat(n_r_max+1,nR_out_p)=half* work(nR_out)*( r(nR_out+1)-r(nR_out-1) )
             end do
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
             !$omp end target teams distribute parallel do
             !$omp target update from(psMat)
 #endif
@@ -1863,7 +1867,7 @@ contains
             psMat(n_r_max+1,n_r_max+1)=half* work(1)*( r(2)-r(1) )
             psMat(n_r_max+1,n_r_max)  =half*work2(n_r_max)*( r(n_r_max)-r(n_r_max-1) )
             psMat(n_r_max+1,2*n_r_max)=half* work(n_r_max)*( r(n_r_max)-r(n_r_max-1) )
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
             !$omp target update to(psMat)
 #endif
 
@@ -1871,7 +1875,7 @@ contains
 
       else
 
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
          !$omp target teams distribute parallel do
 #endif
          do nR_out=1,rscheme_oc%n_max
@@ -1879,15 +1883,15 @@ contains
             psMat(n_r_max+1,nR_out)  =0.0_cp
             psMat(n_r_max+1,nR_out_p)=rscheme_oc%rnorm*rscheme_oc%rMat(1,nR_out)
          end do
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
          !$omp end target teams distribute parallel do
 #endif
 
       end if
 
       if ( rscheme_oc%n_max < n_r_max ) then ! fill with zeros !
-#ifdef WITH_OMP_GPU
-         !$omp target !teams distribute parallel do
+#ifdef WITH_OMP_GPU_NOK
+         !$omp target
 #endif
          do nR_out=rscheme_oc%n_max+1,n_r_max
             nR_out_p=nR_out+n_r_max
@@ -1899,13 +1903,13 @@ contains
             psMat(n_r_max,nR_out_p)  =0.0_cp
             psMat(n_r_max+1,nR_out_p)=0.0_cp
          end do
-#ifdef WITH_OMP_GPU
-         !$omp end target !teams distribute parallel do
+#ifdef WITH_OMP_GPU_NOK
+         !$omp end target
 #endif
       end if
 
       !----- Factors for highest and lowest cheb mode:
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       !$omp target teams distribute parallel do
 #endif
       do nR=1,n_r_max
@@ -1919,54 +1923,54 @@ contains
          psMat(nR_p,n_r_max+1)=rscheme_oc%boundary_fac*psMat(nR_p,n_r_max+1)
          psMat(nR_p,2*n_r_max)=rscheme_oc%boundary_fac*psMat(nR_p,2*n_r_max)
       end do
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       !$omp end target teams distribute parallel do
 #endif
 
       ! compute the linesum of each line
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       !$omp target teams distribute parallel do
 #endif
       do nR=1,2*n_r_max
          psMat_fac(nR,1)=one/maxval(abs(psMat(nR,:)))
       end do
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       !$omp end target teams distribute parallel do
 #endif
       ! now divide each line by the linesum to regularize the matrix
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       !$omp target teams distribute parallel do
 #endif
       do nr=1,2*n_r_max
          psMat(nR,:) = psMat(nR,:)*psMat_fac(nR,1)
       end do
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       !$omp end target teams distribute parallel do
 #endif
 
       ! also compute the rowsum of each column
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       !$omp target teams distribute parallel do
 #endif
       do nR=1,2*n_r_max
          psMat_fac(nR,2)=one/maxval(abs(psMat(:,nR)))
       end do
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       !$omp end target teams distribute parallel do
 #endif
       ! now divide each row by the rowsum
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       !$omp target teams distribute parallel do
 #endif
       do nR=1,2*n_r_max
          psMat(:,nR) = psMat(:,nR)*psMat_fac(nR,2)
       end do
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       !$omp end target teams distribute parallel do
 #endif
 
       !---- LU decomposition:
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       call gpu_prepare_mat(psMat,2*n_r_max,2*n_r_max,psPivot,info,handle,devInfo)
 #else
       call prepare_mat(psMat,2*n_r_max,2*n_r_max,psPivot,info)

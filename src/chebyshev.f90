@@ -1,7 +1,7 @@
 module chebyshev
 
    use precision_mod
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
    use mem_alloc, only: bytes_allocated, gpu_bytes_allocated
 #else
    use mem_alloc, only: bytes_allocated
@@ -12,7 +12,7 @@ module chebyshev
    use useful, only: factorise
    use chebyshev_polynoms_mod, only: cheb_grid
    use cosine_transform_odd, only: costf_odd_t
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
    use cosine_transform_gpu, only: gpu_costf_odd_t
 #endif
    use num_param, only: map_function
@@ -26,7 +26,7 @@ module chebyshev
       real(cp) :: alpha2 !Input parameter for non-linear map to define central point of different spacing (-1.0:1.0)
       logical :: l_map
       type(costf_odd_t) :: chebt_oc
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       type(gpu_costf_odd_t) :: gpu_chebt_oc
 #endif
       real(cp), allocatable :: r_cheb(:)
@@ -63,7 +63,7 @@ contains
       integer :: ni,nd
       logical loc_gpu_dct
       loc_gpu_dct = .false.
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       if ( present(gpu_dct) ) loc_gpu_dct = gpu_dct
 #endif
 
@@ -87,7 +87,7 @@ contains
       allocate( this%r_cheb(n_r_max) )
       bytes_allocated=bytes_allocated+(4*n_r_max*n_r_max+n_r_max)*SIZEOF_DEF_REAL
       if(loc_gpu_dct) then
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
          gpu_bytes_allocated=gpu_bytes_allocated+(4*n_r_max*n_r_max+n_r_max)*SIZEOF_DEF_REAL
 #endif
       end if
@@ -95,7 +95,7 @@ contains
       allocate( this%work_costf(1:ulm-llm+1,n_r_max) )
       bytes_allocated=bytes_allocated+n_r_max*(ulm-llm+1)*SIZEOF_DEF_COMPLEX
       if(loc_gpu_dct) then
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
          gpu_bytes_allocated=gpu_bytes_allocated+n_r_max*(ulm-llm+1)*SIZEOF_DEF_COMPLEX
 #endif
       end if
@@ -103,7 +103,7 @@ contains
       allocate( this%dr_top(n_r_max,1), this%dr_bot(n_r_max,1) )
       bytes_allocated=bytes_allocated+2*n_r_max*SIZEOF_DEF_REAL
       if(loc_gpu_dct) then
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
          gpu_bytes_allocated=gpu_bytes_allocated+2*n_r_max*SIZEOF_DEF_REAL
 #endif
       end if
@@ -115,7 +115,7 @@ contains
 
       call this%chebt_oc%initialize(n_r_max, ni, nd)
       if(loc_gpu_dct) then
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
          call this%gpu_chebt_oc%initialize(this%nRmax, 1, 1)
 #endif
       end if
@@ -123,7 +123,7 @@ contains
       allocate ( this%drx(n_r_max), this%ddrx(n_r_max), this%dddrx(n_r_max) )
       bytes_allocated=bytes_allocated+3*n_r_max*SIZEOF_DEF_REAL
       if(loc_gpu_dct) then
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
          gpu_bytes_allocated=gpu_bytes_allocated+3*n_r_max*SIZEOF_DEF_REAL
 #endif
       end if
@@ -211,7 +211,7 @@ contains
       logical, optional, intent(in) :: gpu_dct   ! compute DCT-I on GPU with hipfort_hipfft
       logical loc_gpu_dct
       loc_gpu_dct = .false.
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       if ( present(gpu_dct) ) loc_gpu_dct = gpu_dct
 #endif
 
@@ -221,7 +221,7 @@ contains
 
       call this%chebt_oc%finalize()
       if(loc_gpu_dct) then
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
          call this%gpu_chebt_oc%finalize()
 #endif
       end if
@@ -422,7 +422,7 @@ contains
       end if
 
       if(loc_gpu_dct) then
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
          call this%gpu_chebt_oc%costf1(f,n_f_max,n_f_start,n_f_stop,work(:,1:this%nRmax))
 #else
          call this%chebt_oc%costf1(f,n_f_max,n_f_start,n_f_stop,work(:,1:this%nRmax))
@@ -454,7 +454,7 @@ contains
       end if
 
       if( loc_gpu_dct) then
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
          call this%gpu_chebt_oc%costf1(f, work1d)
 #else
          call this%chebt_oc%costf1(f, work1d)
@@ -486,7 +486,7 @@ contains
       end if
 
       if( loc_gpu_dct) then
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
          call this%gpu_chebt_oc%costf1(f, work1d_real)
 #else
          call this%chebt_oc%costf1(f, work1d_real)

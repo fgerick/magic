@@ -1,6 +1,6 @@
 module algebra_hipfort
 
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
 
    use precision_mod, only: cp
    use constants, only: one
@@ -8,10 +8,8 @@ module algebra_hipfort
    use hipfort_check
    use hipfort_hipblas
    use omp_lib
-#ifdef WITH_OMP_GPU
    use hipfort_check, only: hipCheck
    use hipfort, only: hipDeviceSynchronize
-#endif
 
    implicit none
 

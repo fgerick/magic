@@ -406,20 +406,20 @@ contains
          end do
 
          if ( l_single_matrix ) then
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
             !$omp target update to(dsdt, dwdt, dpdt)
             !$omp target update to(s, w, p)
 #endif
             call get_single_rhs_imp(s, ds_LMloc, w, dw_LMloc, ddw_LMloc, p,     &
                  &                  dp_LMloc, dsdt, dwdt, dpdt, tscheme, 1,     &
                  &                  .true., .false.)
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
             !$omp target update from(dsdt, dwdt, dpdt)
             !$omp target update from(s, w, p)
             !$omp target update from(ds_LMloc, dp_LMloc, dw_LMloc, ddw_LMloc)
 #endif
          else
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
             !$omp target update to(w)
             !$omp target update to(p)
             !$omp target update to(dwdt)
@@ -431,7 +431,7 @@ contains
             call get_pol_rhs_imp(s, xi, w, dw_LMloc, ddw_LMloc, p, dp_LMloc, &
                  &               dwdt, dpdt, tscheme, 1, .true., .false.,    &
                  &               .false., z)
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
             !$omp target update from(w)
             !$omp target update from(p)
             !$omp target update from(dwdt)
@@ -442,14 +442,14 @@ contains
 #endif
             !-- z is a work array in the above expression
             if ( l_heat ) then
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
                !$omp target update to(s, dsdt)
                if ( l_phase_field ) then
                   !$omp target update to(phi)
                end if
 #endif
                call get_entropy_rhs_imp(s, ds_LMloc, dsdt, phi, 1, .true.)
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
                !$omp target update from(s, ds_LMloc, dsdt)
 #endif
             end if
@@ -458,25 +458,25 @@ contains
          if ( .not. l_double_curl ) dpdt%expl(:,:,2)=dpdt%expl(:,:,2)+coex*dpdt%impl(:,:,1)
          if ( l_heat ) dsdt%expl(:,:,2)=dsdt%expl(:,:,2)+coex*dsdt%impl(:,:,1)
 
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
          !$omp target update to(z)
          !$omp target update to(dzdt)
 #endif
          call get_tor_rhs_imp(time, z, dz_LMloc, dzdt, domega_ma_dt, domega_ic_dt, &
               &               omega_ic, omega_ma, omega_ic1, omega_ma1, tscheme, 1,&
               &               .true., .false.)
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
          !$omp target update from(z, dz_LMloc)
          !$omp target update from(dzdt)
 #endif
          dzdt%expl(:,:,2)=dzdt%expl(:,:,2)+coex*dzdt%impl(:,:,1)
 
          if ( l_chemical_conv ) then
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
             !$omp target update to(xi, dxi_LMloc, dxidt)
 #endif
             call get_comp_rhs_imp(xi, dxi_LMloc, dxidt, 1, .true.)
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
             !$omp target update from(xi, dxi_LMloc, dxidt)
 #endif
             dxidt%expl(:,:,2)=dxidt%expl(:,:,2)+coex*dxidt%impl(:,:,1)
@@ -538,13 +538,13 @@ contains
                call scatter_from_rank0_to_lo(workC(:,nR),djdt%expl(llm:ulm,nR,2))
             end do
 
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
             !$omp target update to(dbdt, djdt)
             !$omp target update to(b, aj)
 #endif
             call get_mag_rhs_imp(b, db_LMloc, ddb_LMloc, aj, dj_LMloc, ddj_LMloc, &
                  &               dbdt, djdt, tscheme, 1, .true., .false.)
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
             !$omp target update from(dbdt, djdt)
             !$omp target update from(b, aj)
             !$omp target update from(db_LMloc, dj_LMloc, ddb_LMloc, ddj_LMloc)
@@ -628,13 +628,13 @@ contains
                           &                        djdt_ic%expl(llm:ulm,nR,2))
                   end do
 
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
                   !$omp target update to(dbdt_ic, djdt_ic)
 #endif
                   call get_mag_ic_rhs_imp(b_ic, db_ic_LMloc, ddb_ic_LMloc, aj_ic,  &
                        &                  dj_ic_LMloc, ddj_ic_LMloc, dbdt_ic,      &
                        &                  djdt_ic, 1, .true.)
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
                   !$omp target update from(dbdt_ic, djdt_ic)
 #endif
                   dbdt_ic%expl(:,:,2)=dbdt_ic%expl(:,:,2)+coex*dbdt_ic%impl(:,:,1)
@@ -1472,20 +1472,20 @@ contains
          coex = two*(one-alpha)
 
          if ( l_single_matrix ) then
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
             !$omp target update to(dsdt, dwdt, dpdt)
             !$omp target update to(s, w, p)
 #endif
             call get_single_rhs_imp(s, ds_LMloc, w, dw_LMloc, ddw_LMloc, p,     &
                  &                  dp_LMloc, dsdt, dwdt, dpdt, tscheme, 1,     &
                  &                  .true., .false.)
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
             !$omp target update from(dsdt, dwdt, dpdt)
             !$omp target update from(s, w, p)
             !$omp target update from(ds_LMloc, dp_LMloc, dw_LMloc, ddw_LMloc)
 #endif
          else
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
             !$omp target update to(w)
             !$omp target update to(p)
             !$omp target update to(dwdt)
@@ -1497,7 +1497,7 @@ contains
             call get_pol_rhs_imp(s, xi, w, dw_LMloc, ddw_LMloc, p, dp_LMloc, &
                  &               dwdt, dpdt, tscheme, 1, .true., .false.,    &
                  &               .false., z)
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
             !$omp target update from(w)
             !$omp target update from(p)
             !$omp target update from(dwdt)
@@ -1508,7 +1508,7 @@ contains
 #endif
             !-- z is a work array in the above expression
             if ( l_heat ) then
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
                !$omp target update to(s, dsdt)
                if ( l_phase_field ) then
                   !$omp target update to(phi)
@@ -1516,7 +1516,7 @@ contains
 #endif
                call get_entropy_rhs_imp(s, ds_LMloc, dsdt, phi, &
                                   &                   1, .true.)
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
                !$omp target update from(s, ds_LMloc, dsdt)
 #endif
             end if
@@ -1528,14 +1528,14 @@ contains
          end if
          if ( l_heat) dsdt%expl(:,:,2)=dsdt%expl(:,:,2)+coex*dsdt%impl(:,:,1)
 
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
          !$omp target update to(z)
          !$omp target update to(dzdt)
 #endif
          call get_tor_rhs_imp(time, z, dz_LMloc, dzdt, domega_ma_dt, domega_ic_dt, &
               &               omega_ic, omega_ma, omega_ic1, omega_ma1, tscheme, 1,&
               &               .true., .false.)
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
          !$omp target update from(z, dz_LMloc)
          !$omp target update from(dzdt)
 #endif
@@ -1543,24 +1543,24 @@ contains
 
 
          if ( l_chemical_conv ) then
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
             !$omp target update to(xi, dxi_LMloc, dxidt)
 #endif
             call get_comp_rhs_imp(xi, dxi_LMloc, dxidt, 1, .true.)
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
             !$omp target update from(xi, dxi_LMloc, dxidt)
 #endif
             dxidt%expl(:,:,2)=dxidt%expl(:,:,2)+coex*dxidt%impl(:,:,1)
          end if
 
          if ( l_mag ) then
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
             !$omp target update to(dbdt, djdt)
             !$omp target update to(b, aj)
 #endif
             call get_mag_rhs_imp(b, db_LMloc, ddb_LMloc, aj, dj_LMloc, ddj_LMloc, &
                  &               dbdt, djdt, tscheme, 1, .true., .false.)
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
             !$omp target update from(dbdt, djdt)
             !$omp target update from(b, aj)
             !$omp target update from(db_LMloc, dj_LMloc, ddb_LMloc, ddj_LMloc)
@@ -1570,13 +1570,13 @@ contains
          end if
 
          if ( l_cond_ic ) then
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
             !$omp target update to(dbdt_ic, djdt_ic)
 #endif
             call get_mag_ic_rhs_imp(b_ic, db_ic_LMloc, ddb_ic_LMloc, aj_ic,  &
                  &                  dj_ic_LMloc, ddj_ic_LMloc, dbdt_ic,      &
                  &                  djdt_ic, 1, .true.)
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
             !$omp target update from(dbdt_ic, djdt_ic)
 #endif
             dbdt_ic%expl(:,:,2)=dbdt_ic%expl(:,:,2)+coex*dbdt_ic%impl(:,:,1)
@@ -2369,20 +2369,20 @@ contains
       &    version == 1 ) then
          coex = two*(one-alpha)
          if ( l_single_matrix ) then
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
             !$omp target update to(dsdt, dwdt, dpdt)
             !$omp target update to(s, w, p)
 #endif
             call get_single_rhs_imp(s, ds_LMloc, w, dw_LMloc, ddw_LMloc, p,     &
                  &                  dp_LMloc, dsdt, dwdt, dpdt, tscheme, 1,     &
                  &                  .true., .false.)
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
             !$omp target update from(dsdt, dwdt, dpdt)
             !$omp target update from(s, w, p)
             !$omp target update from(ds_LMloc, dp_LMloc, dw_LMloc, ddw_LMloc)
 #endif
          else
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
             !$omp target update to(w)
             !$omp target update to(p)
             !$omp target update to(dwdt)
@@ -2394,7 +2394,7 @@ contains
             call get_pol_rhs_imp(s, xi, w, dw_LMloc, ddw_LMloc, p, dp_LMloc, &
                  &               dwdt, dpdt, tscheme, 1, .true., .false.,    &
                  &               .false., z)
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
             !$omp target update from(w)
             !$omp target update from(p)
             !$omp target update from(dwdt)
@@ -2405,7 +2405,7 @@ contains
 #endif
             !-- z is a work array in the above expression
             if ( l_heat ) then
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
                !$omp target update to(s, dsdt)
                if ( l_phase_field ) then
                   !$omp target update to(phi)
@@ -2413,7 +2413,7 @@ contains
 #endif
                call get_entropy_rhs_imp(s, ds_LMloc, dsdt, phi, &
                                   &                   1, .true.)
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
                !$omp target update from(s, ds_LMloc, dsdt)
 #endif
             end if
@@ -2422,38 +2422,38 @@ contains
          if ( .not. l_double_curl ) dpdt%expl(:,:,2)=dpdt%expl(:,:,2)+coex*dpdt%impl(:,:,1)
          if ( l_heat ) dsdt%expl(:,:,2)=dsdt%expl(:,:,2)+coex*dsdt%impl(:,:,1)
 
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
          !$omp target update to(z)
          !$omp target update to(dzdt)
 #endif
          call get_tor_rhs_imp(time, z, dz_LMloc, dzdt, domega_ma_dt, domega_ic_dt, &
               &               omega_ic, omega_ma, omega_ic1, omega_ma1, tscheme, 1,&
               &               .true., .false.)
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
          !$omp target update from(z, dz_LMloc)
          !$omp target update from(dzdt)
 #endif
          dzdt%expl(:,:,2)=dzdt%expl(:,:,2)+coex*dzdt%impl(:,:,1)
 
          if ( l_chemical_conv ) then
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
             !$omp target update to(xi, dxi_LMloc, dxidt)
 #endif
             call get_comp_rhs_imp(xi, dxi_LMloc, dxidt, 1, .true.)
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
             !$omp target update from(xi, dxi_LMloc, dxidt)
 #endif
             dxidt%expl(:,:,2)=dxidt%expl(:,:,2)+coex*dxidt%impl(:,:,1)
          end if
 
          if ( l_mag ) then
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
             !$omp target update to(dbdt, djdt)
             !$omp target update to(b, aj)
 #endif
             call get_mag_rhs_imp(b, db_LMloc, ddb_LMloc, aj, dj_LMloc, ddj_LMloc, &
                  &               dbdt, djdt, tscheme, 1, .true., .false.)
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
             !$omp target update from(dbdt, djdt)
             !$omp target update from(b, aj)
             !$omp target update from(db_LMloc, dj_LMloc, ddb_LMloc, ddj_LMloc)
@@ -2463,13 +2463,13 @@ contains
          end if
 
          if ( l_cond_ic ) then
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
             !$omp target update to(dbdt_ic, djdt_ic)
 #endif
             call get_mag_ic_rhs_imp(b_ic, db_ic_LMloc, ddb_ic_LMloc, aj_ic,  &
                  &                  dj_ic_LMloc, ddj_ic_LMloc, dbdt_ic,      &
                  &                  djdt_ic, 1, .true.)
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
             !$omp target update from(dbdt_ic, djdt_ic)
 #endif
             dbdt_ic%expl(:,:,2)=dbdt_ic%expl(:,:,2)+coex*dbdt_ic%impl(:,:,1)

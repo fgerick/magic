@@ -868,7 +868,7 @@ contains
 
       !-- Local variables
       integer :: n_stage, n_r, start_lm, stop_lm
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       integer :: nr_start, nr_stop
       integer :: istage
       real(cp), pointer :: bimp_ptr(:,:), bexp_ptr(:,:)
@@ -976,7 +976,7 @@ contains
       !-- Local variables
       integer :: n_stage, n_r
 
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       integer :: nr_start, nr_stop
       integer :: istage
       real(cp), pointer :: bimp_ptr(:,:), bexp_ptr(:,:)
@@ -1074,7 +1074,7 @@ contains
       !-- Local variables
       integer :: n_stage, n_r, start_lm, stop_lm
 
-#ifdef WITH_OMP_GPU
+#ifdef WITH_OMP_GPU_NOK
       integer :: nr_start, nr_stop
       integer :: nstages
       real(cp), pointer :: bass_exp_ptr(:), bass_imp_ptr(:)
